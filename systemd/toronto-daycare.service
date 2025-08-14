@@ -1,0 +1,25 @@
+[Unit]
+Description=Toronto Daycare Next.js Application
+After=network.target
+
+[Service]
+Type=simple
+User=nginx
+Group=nginx
+WorkingDirectory=/var/www/toronto_daycares/nextjs_app
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/var/log/toronto-daycare/app.log
+StandardError=append:/var/log/toronto-daycare/error.log
+
+# Environment variables
+Environment=NODE_ENV=production
+Environment=PORT=3001
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
