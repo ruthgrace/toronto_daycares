@@ -3,11 +3,14 @@
 import { useState, useEffect } from 'react';
 import { DaycareResponse, DaycareFeature } from '@/lib/types/daycare';
 import DaycareCard from '@/components/DaycareCard';
+import AddressSearch from '@/components/AddressSearch';
 
 export default function Home() {
   const [daycares, setDaycares] = useState<DaycareFeature[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchLocation, setSearchLocation] = useState<{ x: number; y: number } | null>(null);
+  const [searchDistance, setSearchDistance] = useState('5000');
   const [filters, setFilters] = useState({
     subsidyOnly: false,
     cwelccOnly: false,
@@ -15,8 +18,12 @@ export default function Home() {
   });
 
   useEffect(() => {
-    fetchDaycares();
-  }, []);
+    if (searchLocation) {
+      fetchDaycaresByLocation(searchLocation);
+    } else {
+      fetchDaycares();
+    }
+  }, [searchLocation, searchDistance]);
 
   const fetchDaycares = async () => {
     try {
@@ -29,6 +36,29 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchDaycaresByLocation = async (location: { x: number; y: number }) => {
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `/api/daycares-by-location?x=${location.x}&y=${location.y}&distance=${searchDistance}`
+      );
+      const data = await response.json();
+      setDaycares(data.features || []);
+    } catch (error) {
+      console.error('Error fetching daycares by location:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLocationSelect = (coordinates: { x: number; y: number }) => {
+    setSearchLocation(coordinates);
+  };
+
+  const clearLocationSearch = () => {
+    setSearchLocation(null);
   };
 
   const filteredDaycares = daycares.filter(daycare => {
@@ -97,11 +127,46 @@ export default function Home() {
         {/* Search and Filters */}
         <div className="bg-white rounded-lg shadow-sm border border-orange-100 p-6 mb-8">
           <div className="space-y-4">
-            {/* Search Bar */}
+            {/* Location Search */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Search by Location</label>
+              <AddressSearch onLocationSelect={handleLocationSelect} />
+              {searchLocation && (
+                <div className="flex items-center justify-between bg-orange-50 px-3 py-2 rounded-md">
+                  <span className="text-sm text-orange-800">Searching within {parseInt(searchDistance) / 1000}km of selected location</span>
+                  <button
+                    onClick={clearLocationSearch}
+                    className="text-orange-600 hover:text-orange-800 text-sm font-medium"
+                  >
+                    Clear location
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Distance Selector */}
+            {searchLocation && (
+              <div className="flex items-center gap-2">
+                <label htmlFor="distance" className="text-sm text-gray-700">Search radius:</label>
+                <select
+                  id="distance"
+                  value={searchDistance}
+                  onChange={(e) => setSearchDistance(e.target.value)}
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value="1000">1 km</option>
+                  <option value="2000">2 km</option>
+                  <option value="5000">5 km</option>
+                  <option value="10000">10 km</option>
+                </select>
+              </div>
+            )}
+
+            {/* Name Search Bar */}
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search by name or address..."
+                placeholder="Filter by daycare name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
